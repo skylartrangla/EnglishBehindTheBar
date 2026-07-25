@@ -1,7 +1,7 @@
 import { lessons } from "./lessons.js";
 
 export const economy = {
-  lessonReward: 40,
+  lessonReward: 50,
   examPassReward: 400,
   wrongAnswerPenalty: 25,
   passScore: 80,
