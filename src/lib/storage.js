@@ -17,6 +17,7 @@ export function saveProfile(profile) {
 
 export function clearProfile() {
   localStorage.removeItem(KEYS.profile);
+  localStorage.removeItem(KEYS.progress);
 }
 
 export function loadProgress() {
@@ -26,10 +27,25 @@ export function loadProgress() {
     points: 0,
     recordings: 0,
     checkIns: [],
+    inventory: ["classic-apron"],
+    equipped: {
+      outfit: "classic-apron",
+      head: "",
+      accessory: "",
+      background: "",
+    },
+    examResults: {},
   };
 
   try {
-    return { ...fallback, ...(JSON.parse(localStorage.getItem(KEYS.progress)) || {}) };
+    const saved = JSON.parse(localStorage.getItem(KEYS.progress)) || {};
+    return {
+      ...fallback,
+      ...saved,
+      inventory: saved.inventory?.length ? saved.inventory : fallback.inventory,
+      equipped: { ...fallback.equipped, ...(saved.equipped || {}) },
+      examResults: saved.examResults || {},
+    };
   } catch {
     return fallback;
   }
