@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useState } from "react";
 import AudioRecorder from "./components/AudioRecorder.jsx";
+import ShiftSubmission from "./components/ShiftSubmission.jsx";
 import TranslatableText from "./components/TranslatableText.jsx";
 import VideoRecorder from "./components/VideoRecorder.jsx";
 import {
@@ -209,7 +210,7 @@ function HomeScreen({ profile, progress, onStartLesson, onNavigate }) {
           <div className="panel-heading">
             <div>
               <span className="step-label">PHRASE OF THE SHIFT</span>
-              <h3>Hold any word for 5 seconds</h3>
+              <h3>Pause on any word for 2 seconds</h3>
             </div>
             <button
               type="button"
@@ -259,12 +260,20 @@ function LessonPlayer({ lesson, progress, onExit, onComplete, onRecording }) {
   const [step, setStep] = useState(0);
   const [showVietnamese, setShowVietnamese] = useState(true);
   const [patternChoice, setPatternChoice] = useState(lesson.pattern.options[0]);
+  const [shiftEvidenceReady, setShiftEvidenceReady] = useState(false);
+  const [showCelebration, setShowCelebration] = useState(false);
   const steps = ["Hear it", "Words", "Build it", "Dialogue", "Speak", "Shift mission"];
   const isCompleted = progress.completedLessons.includes(lesson.id);
 
   function next() {
     setStep((current) => Math.min(current + 1, steps.length - 1));
     window.scrollTo({ top: 0, behavior: "smooth" });
+  }
+
+  function finishLesson() {
+    if (!shiftEvidenceReady || isCompleted) return;
+    onComplete(lesson);
+    setShowCelebration(true);
   }
 
   return (
@@ -304,7 +313,7 @@ function LessonPlayer({ lesson, progress, onExit, onComplete, onRecording }) {
         <div className="lesson-goal">
           <div className="step-label">TODAY’S GOAL</div>
           <h1>{lesson.goal}</h1>
-          <p>Pause your cursor—or press and hold on your phone—for five seconds to translate a word.</p>
+          <p>Pause your cursor—or press and hold on your phone—for two seconds to translate any word.</p>
         </div>
 
         {step === 0 && (
@@ -433,16 +442,21 @@ function LessonPlayer({ lesson, progress, onExit, onComplete, onRecording }) {
             <div className="shift-icon">↗</div>
             <h2>{lesson.shiftChallenge}</h2>
             <p>
-              The streak is protected only after a speaking task—not simply by opening the website.
+              During your next shift, record yourself using today’s phrase while serving at the
+              front of the bar. Audio is accepted if recording video is not practical.
             </p>
+            {!isCompleted && <ShiftSubmission onReady={setShiftEvidenceReady} />}
             <button
               type="button"
               className="primary-button"
-              onClick={() => onComplete(lesson)}
-              disabled={isCompleted}
+              onClick={finishLesson}
+              disabled={isCompleted || !shiftEvidenceReady}
             >
               {isCompleted ? "✓ Lesson already completed" : "Complete lesson · +40 BP"}
             </button>
+            {!isCompleted && !shiftEvidenceReady && (
+              <small className="completion-lock">Add a valid clip to unlock lesson completion.</small>
+            )}
           </section>
         )}
 
@@ -457,6 +471,22 @@ function LessonPlayer({ lesson, progress, onExit, onComplete, onRecording }) {
           )}
         </div>
       </main>
+      {showCelebration && (
+        <div className="celebration-overlay" role="dialog" aria-modal="true" aria-labelledby="celebration-title">
+          <div className="celebration-card">
+            <div className="celebration-mark">◆</div>
+            <span className="step-label">TODAY’S MISSION COMPLETE</span>
+            <h2 id="celebration-title">Congratulations! You’ve finished today’s lesson.</h2>
+            <p>
+              Your real-shift practice is complete, your streak is protected, and you earned 40 Bar
+              Points.
+            </p>
+            <button type="button" className="primary-button full-width" onClick={onExit}>
+              Back to today →
+            </button>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
@@ -580,7 +610,7 @@ function PracticeScreen() {
           </div>
           <TranslatableText
             text={judgeQuestions[questionIndex]}
-            sentenceTranslation="Giữ từng từ trong 5 giây để xem nghĩa."
+            sentenceTranslation="Giữ từng từ trong 2 giây để xem nghĩa."
             className="judge-question"
           />
           <div className={`timer ${timerMode}`}>
@@ -707,7 +737,7 @@ function ProfileScreen({ profile, onReset }) {
           <dl>
             <div><dt>Study time</dt><dd>{profile.studyTime}</dd></div>
             <div><dt>Recovery day</dt><dd>{days[profile.recoveryDay]}</dd></div>
-            <div><dt>Translation hold</dt><dd>5 seconds</dd></div>
+            <div><dt>Translation hold</dt><dd>2 seconds</dd></div>
             <div><dt>Audio and video</dt><dd>Saved locally</dd></div>
           </dl>
         </article>
@@ -765,6 +795,7 @@ export default function App() {
         completionDates: current.completionDates.includes(today)
           ? current.completionDates
           : [...current.completionDates, today],
+        recordings: current.recordings + 1,
         points: current.points + 40,
       };
     });
