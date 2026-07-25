@@ -27,8 +27,8 @@ function dailyQuestions() {
     const answerIndex = (seed + questionIndex * 3) % phraseBank.length;
     const optionIndexes = [
       answerIndex,
-      (answerIndex + 3 + questionIndex) % phraseBank.length,
-      (answerIndex + 6 + questionIndex) % phraseBank.length,
+      (answerIndex + 3) % phraseBank.length,
+      (answerIndex + 7) % phraseBank.length,
     ];
     const rotated = optionIndexes
       .map((index) => phraseBank[index][1])
