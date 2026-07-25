@@ -647,7 +647,7 @@ p {
 }
 
 .translation-word.is-holding::after {
-  animation: hold-word 5s linear forwards;
+  animation: hold-word 2s linear forwards;
 }
 
 @keyframes hold-word {
@@ -668,6 +668,28 @@ p {
   background: #07536a;
   box-shadow: 0 18px 50px rgba(0, 8, 14, 0.46);
   transform: translate(-50%, -100%);
+}
+
+.translation-hold-indicator {
+  position: fixed;
+  z-index: 999;
+  width: 25px;
+  height: 25px;
+  pointer-events: none;
+  border: 2px solid rgba(150, 235, 241, 0.25);
+  border-top-color: var(--sea-glass);
+  border-radius: 50%;
+  transform: translate(10px, 10px);
+  animation: translation-wait 2s linear forwards;
+}
+
+@keyframes translation-wait {
+  from {
+    transform: translate(10px, 10px) rotate(0);
+  }
+  to {
+    transform: translate(10px, 10px) rotate(720deg);
+  }
 }
 
 .translation-popover > span {
@@ -1350,6 +1372,95 @@ p {
   max-width: 620px;
 }
 
+.shift-submission {
+  display: grid;
+  width: min(720px, 100%);
+  gap: 16px;
+  justify-items: stretch;
+  margin: 18px 0 24px;
+  padding: clamp(16px, 3vw, 24px);
+  border: 1px solid rgba(89, 221, 234, 0.25);
+  border-radius: 12px;
+  background: rgba(3, 25, 35, 0.52);
+  text-align: left;
+}
+
+.submission-requirement {
+  display: grid;
+  gap: 7px;
+}
+
+.submission-requirement > span {
+  color: var(--coral);
+  font-family: "Space Mono", monospace;
+  font-size: 0.64rem;
+  letter-spacing: 0.13em;
+}
+
+.submission-requirement > strong {
+  font-size: clamp(1.05rem, 3vw, 1.35rem);
+}
+
+.submission-requirement > p,
+.shift-submission > small {
+  margin: 0;
+}
+
+.shift-submission video {
+  width: 100%;
+  max-height: 360px;
+  min-height: 230px;
+  border: 1px solid var(--line);
+  border-radius: 9px;
+  background: var(--ocean-950);
+  object-fit: cover;
+}
+
+.shift-submission video.is-placeholder {
+  min-height: 120px;
+  background:
+    radial-gradient(circle at center, rgba(20, 196, 216, 0.12), transparent 30%),
+    var(--ocean-950);
+}
+
+.shift-submission audio {
+  width: 100%;
+}
+
+.submission-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 9px;
+}
+
+.recording-countdown {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  color: var(--coral);
+  font-family: "Space Mono", monospace;
+  font-size: 0.72rem;
+}
+
+.recording-countdown > span {
+  width: 9px;
+  height: 9px;
+  border-radius: 50%;
+  background: var(--coral);
+  animation: pulse 1s infinite;
+}
+
+.submission-success {
+  margin: 0;
+  color: var(--sea-glass);
+}
+
+.completion-lock {
+  display: block;
+  margin-top: 10px;
+  color: var(--ink-muted);
+}
+
 .shift-icon {
   display: grid;
   width: 84px;
@@ -1366,6 +1477,46 @@ p {
   justify-content: space-between;
   gap: 12px;
   margin-top: 20px;
+}
+
+.celebration-overlay {
+  position: fixed;
+  z-index: 2000;
+  inset: 0;
+  display: grid;
+  place-items: center;
+  padding: 18px;
+  background: rgba(1, 13, 19, 0.82);
+  backdrop-filter: blur(12px);
+}
+
+.celebration-card {
+  width: min(520px, 100%);
+  padding: clamp(26px, 6vw, 52px);
+  border: 1px solid rgba(89, 221, 234, 0.35);
+  border-radius: 16px;
+  background:
+    radial-gradient(circle at 50% 0, rgba(20, 196, 216, 0.22), transparent 45%),
+    var(--ocean-925);
+  box-shadow: 0 30px 100px rgba(0, 8, 14, 0.65);
+  text-align: center;
+}
+
+.celebration-card h2 {
+  margin-top: 18px;
+}
+
+.celebration-mark {
+  display: grid;
+  width: 76px;
+  height: 76px;
+  place-items: center;
+  margin: 0 auto 20px;
+  border: 1px solid var(--sea-glass);
+  border-radius: 50%;
+  color: var(--sea-glass);
+  font-size: 1.6rem;
+  box-shadow: 0 0 50px rgba(129, 230, 192, 0.18);
 }
 
 @media (max-width: 800px) {
@@ -1584,6 +1735,18 @@ p {
 
   .translation-popover {
     min-width: 180px;
+  }
+
+  .submission-actions {
+    display: grid;
+  }
+
+  .submission-actions > button {
+    width: 100%;
+  }
+
+  .shift-submission video {
+    min-height: 190px;
   }
 }
 
