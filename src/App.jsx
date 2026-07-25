@@ -1,5 +1,8 @@
-import { useEffect, useMemo, useState } from "react";
+import { Fragment, useEffect, useMemo, useState } from "react";
 import AudioRecorder from "./components/AudioRecorder.jsx";
+import BartenderAvatar from "./components/BartenderAvatar.jsx";
+import ExamPlayer from "./components/ExamPlayer.jsx";
+import ShiftSubmission from "./components/ShiftSubmission.jsx";
 import TranslatableText from "./components/TranslatableText.jsx";
 import VideoRecorder from "./components/VideoRecorder.jsx";
 import {
@@ -8,6 +11,15 @@ import {
   judgeQuestions,
   starterLessons,
 } from "./data/course.js";
+import {
+  allAvatarItems,
+  economy,
+  examCheckpoints,
+  examSpecialItems,
+  isExamReady,
+  isWeekUnlocked,
+  storeItems,
+} from "./data/game.js";
 import {
   calculateStreak,
   clearProfile,
@@ -21,9 +33,9 @@ import {
 const screens = [
   ["home", "⌂", "Today"],
   ["course", "◫", "Course"],
-  ["practice", "◎", "Practice"],
+  ["exams", "◎", "Exams"],
+  ["wardrobe", "♢", "Pu"],
   ["progress", "◇", "Progress"],
-  ["profile", "○", "Profile"],
 ];
 
 function speak(text, rate = 1) {
@@ -66,8 +78,8 @@ function Onboarding({ onComplete }) {
         </div>
         <h1>Build a voice that carries across the bar.</h1>
         <p>
-          A 24-week speaking course for Vietnamese bartenders—one focused lesson,
-          one recording and one real-shift phrase at a time.
+          A 24-week, 144-lesson speaking course for Vietnamese bartenders—one
+          focused lesson, one recording and one real-shift phrase at a time.
         </p>
         <div className="ocean-lines" aria-hidden="true">
           <span />
@@ -135,7 +147,7 @@ function AppHeader({ profile, progress, onOpenProfile }) {
       </button>
       <div className="header-status">
         <span>🔥 {streak}</span>
-        <span>◆ {progress.points}</span>
+        <span>◉ {progress.points}</span>
         <button type="button" className="avatar-button" onClick={onOpenProfile}>
           {profile.name.slice(0, 1).toUpperCase()}
         </button>
@@ -144,9 +156,16 @@ function AppHeader({ profile, progress, onOpenProfile }) {
   );
 }
 
-function HomeScreen({ profile, progress, onStartLesson, onNavigate }) {
+function HomeScreen({ profile, progress, onStartLesson, onStartExam, onNavigate }) {
   const completed = new Set(progress.completedLessons);
-  const currentLesson = starterLessons.find((lesson) => !completed.has(lesson.id)) || starterLessons[0];
+  const currentLesson = starterLessons.find(
+    (lesson) =>
+      isWeekUnlocked(lesson.week, progress.examResults) && !completed.has(lesson.id),
+  );
+  const dueExam = examCheckpoints.find(
+    (checkpoint) =>
+      !progress.examResults?.[checkpoint]?.passed && isExamReady(checkpoint, progress),
+  );
   const streak = calculateStreak(progress.completionDates, profile.recoveryDay);
 
   return (
@@ -157,7 +176,16 @@ function HomeScreen({ profile, progress, onStartLesson, onNavigate }) {
           <h1>Good evening, {profile.name}.</h1>
           <p>Your next speaking mission is ready.</p>
         </div>
-        <div className="check-in-chip">✓ Daily check-in saved</div>
+        <div className="home-character">
+          <BartenderAvatar equipped={progress.equipped} compact />
+          <div>
+            <span className="check-in-chip">✓ Daily check-in saved</span>
+            <strong>{progress.points} Bar Coins</strong>
+            <button type="button" className="text-button" onClick={() => onNavigate("wardrobe")}>
+              Dress Pu →
+            </button>
+          </div>
+        </div>
       </section>
 
       <section className="stat-grid">
@@ -167,9 +195,9 @@ function HomeScreen({ profile, progress, onStartLesson, onNavigate }) {
           <small>Recovery days do not break it.</small>
         </article>
         <article className="stat-card">
-          <span>Bar Points</span>
+          <span>Bar Coins</span>
           <strong>{progress.points}</strong>
-          <small>Earned through speaking work.</small>
+          <small>Earned through lessons and exams.</small>
         </article>
         <article className="stat-card">
           <span>Recordings</span>
@@ -178,38 +206,64 @@ function HomeScreen({ profile, progress, onStartLesson, onNavigate }) {
         </article>
       </section>
 
-      <section className="mission-card">
-        <div className="mission-topline">
-          <span className="stage-pill">WEEK {currentLesson.week} · DAY {currentLesson.day}</span>
-          <span>{currentLesson.duration} MIN</span>
-        </div>
-        <div className="mission-layout">
-          <div>
-            <div className="eyebrow">{currentLesson.theme.toUpperCase()}</div>
-            <h2>{currentLesson.title}</h2>
-            <p>{currentLesson.goal}</p>
-            <div className="lesson-route">
-              {["Hear", "Words", "Build", "Dialogue", "Speak", "Shift"].map((step, index) => (
-                <span key={step}>
-                  <b>{index + 1}</b>
-                  {step}
-                </span>
-              ))}
-            </div>
+      {currentLesson ? (
+        <section className="mission-card">
+          <div className="mission-topline">
+            <span className="stage-pill">WEEK {currentLesson.week} · DAY {currentLesson.day}</span>
+            <span>{currentLesson.duration} MIN</span>
           </div>
-          <button type="button" className="start-orb" onClick={() => onStartLesson(currentLesson)}>
-            <span>START</span>
-            <b>→</b>
-          </button>
-        </div>
-      </section>
+          <div className="mission-layout">
+            <div>
+              <div className="eyebrow">{currentLesson.theme.toUpperCase()}</div>
+              <h2>{currentLesson.title}</h2>
+              <p>{currentLesson.goal}</p>
+              <div className="lesson-route">
+                {["Hear", "Words", "Build", "Dialogue", "Speak", "Shift"].map((step, index) => (
+                  <span key={step}>
+                    <b>{index + 1}</b>
+                    {step}
+                  </span>
+                ))}
+              </div>
+            </div>
+            <button type="button" className="start-orb" onClick={() => onStartLesson(currentLesson)}>
+              <span>START</span>
+              <b>→</b>
+            </button>
+          </div>
+        </section>
+      ) : dueExam ? (
+        <section className="mission-card exam-mission">
+          <div className="mission-topline">
+            <span className="stage-pill">CHECKPOINT READY</span>
+            <span>10 QUESTIONS</span>
+          </div>
+          <div className="mission-layout">
+            <div>
+              <div className="eyebrow">WEEKS {dueExam - 3}–{dueExam} REVISION</div>
+              <h2>Pass the Week {dueExam} exam.</h2>
+              <p>Score 80% to unlock the next chapter. Score 90% to earn an exclusive item.</p>
+            </div>
+            <button type="button" className="start-orb" onClick={() => onStartExam(dueExam)}>
+              <span>EXAM</span>
+              <b>→</b>
+            </button>
+          </div>
+        </section>
+      ) : (
+        <section className="mission-card">
+          <div className="eyebrow">COURSE COMPLETE</div>
+          <h2>Every lesson and checkpoint is complete.</h2>
+          <p>Keep practicing in Judge Mode and build your competition voice.</p>
+        </section>
+      )}
 
       <section className="two-column">
         <article className="panel-card phrase-card">
           <div className="panel-heading">
             <div>
               <span className="step-label">PHRASE OF THE SHIFT</span>
-              <h3>Hold any word for 5 seconds</h3>
+              <h3>Pause on any word for 2 seconds</h3>
             </div>
             <button
               type="button"
@@ -258,13 +312,20 @@ function HomeScreen({ profile, progress, onStartLesson, onNavigate }) {
 function LessonPlayer({ lesson, progress, onExit, onComplete, onRecording }) {
   const [step, setStep] = useState(0);
   const [showVietnamese, setShowVietnamese] = useState(true);
-  const [patternChoice, setPatternChoice] = useState(lesson.pattern.options[0]);
+  const [shiftEvidenceReady, setShiftEvidenceReady] = useState(false);
+  const [showCelebration, setShowCelebration] = useState(false);
   const steps = ["Hear it", "Words", "Build it", "Dialogue", "Speak", "Shift mission"];
   const isCompleted = progress.completedLessons.includes(lesson.id);
 
   function next() {
     setStep((current) => Math.min(current + 1, steps.length - 1));
     window.scrollTo({ top: 0, behavior: "smooth" });
+  }
+
+  function finishLesson() {
+    if (!shiftEvidenceReady || isCompleted) return;
+    onComplete(lesson);
+    setShowCelebration(true);
   }
 
   return (
@@ -304,7 +365,7 @@ function LessonPlayer({ lesson, progress, onExit, onComplete, onRecording }) {
         <div className="lesson-goal">
           <div className="step-label">TODAY’S GOAL</div>
           <h1>{lesson.goal}</h1>
-          <p>Pause your cursor—or press and hold on your phone—for five seconds to translate a word.</p>
+          <p>Pause your cursor—or press and hold on your phone—for two seconds to translate any word.</p>
         </div>
 
         {step === 0 && (
@@ -364,22 +425,15 @@ function LessonPlayer({ lesson, progress, onExit, onComplete, onRecording }) {
             <div className="card-kicker">03 · BUILD ONE USEFUL SENTENCE</div>
             <p>{lesson.pattern.prompt}</p>
             <div className="pattern-builder">
-              <span>{lesson.pattern.lead}</span>
-              <select value={patternChoice} onChange={(event) => setPatternChoice(event.target.value)}>
-                {lesson.pattern.options.map((option) => (
-                  <option key={option}>{option}</option>
-                ))}
-              </select>
-              <span>.</span>
+              <TranslatableText text={lesson.pattern.template} />
             </div>
-            <div className="built-phrase">
-              <TranslatableText
-                text={`${lesson.pattern.lead} ${patternChoice}.`}
-                sentenceTranslation="Chạm hoặc giữ từng từ để xem nghĩa tiếng Việt."
-              />
-              <button type="button" className="audio-button" onClick={() => speak(`${lesson.pattern.lead} ${patternChoice}.`)}>
-                ▶
-              </button>
+            <div className="pattern-examples">
+              {lesson.pattern.examples.map((example) => (
+                <button type="button" key={example} onClick={() => speak(example)}>
+                  <TranslatableText text={example} />
+                  <span>▶</span>
+                </button>
+              ))}
             </div>
             <p className="muted">Say it three times: slowly, naturally, then without looking.</p>
           </section>
@@ -433,16 +487,23 @@ function LessonPlayer({ lesson, progress, onExit, onComplete, onRecording }) {
             <div className="shift-icon">↗</div>
             <h2>{lesson.shiftChallenge}</h2>
             <p>
-              The streak is protected only after a speaking task—not simply by opening the website.
+              During your next shift, record yourself using today’s phrase while serving at the
+              front of the bar. Audio is accepted if recording video is not practical.
             </p>
+            {!isCompleted && <ShiftSubmission onReady={setShiftEvidenceReady} />}
             <button
               type="button"
               className="primary-button"
-              onClick={() => onComplete(lesson)}
-              disabled={isCompleted}
+              onClick={finishLesson}
+              disabled={isCompleted || !shiftEvidenceReady}
             >
-              {isCompleted ? "✓ Lesson already completed" : "Complete lesson · +40 BP"}
+              {isCompleted
+                ? "✓ Lesson already completed"
+                : `Complete lesson · +${economy.lessonReward} coins`}
             </button>
+            {!isCompleted && !shiftEvidenceReady && (
+              <small className="completion-lock">Add a valid clip to unlock lesson completion.</small>
+            )}
           </section>
         )}
 
@@ -457,11 +518,27 @@ function LessonPlayer({ lesson, progress, onExit, onComplete, onRecording }) {
           )}
         </div>
       </main>
+      {showCelebration && (
+        <div className="celebration-overlay" role="dialog" aria-modal="true" aria-labelledby="celebration-title">
+          <div className="celebration-card">
+            <div className="celebration-mark">◆</div>
+            <span className="step-label">TODAY’S MISSION COMPLETE</span>
+            <h2 id="celebration-title">Congratulations! You’ve finished today’s lesson.</h2>
+            <p>
+              Your real-shift practice is complete, your streak is protected, and you earned{" "}
+              {economy.lessonReward} Bar Coins.
+            </p>
+            <button type="button" className="primary-button full-width" onClick={onExit}>
+              Back to today →
+            </button>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
 
-function CourseScreen({ progress, onStartLesson }) {
+function CourseScreen({ progress, onStartLesson, onStartExam }) {
   const [phase, setPhase] = useState("foundations");
   const lessonsByWeek = useMemo(
     () =>
@@ -498,31 +575,73 @@ function CourseScreen({ progress, onStartLesson }) {
           .filter((week) => week.phase === phase)
           .map((week) => {
             const weekLessons = lessonsByWeek[week.week] || [];
+            const unlocked = isWeekUnlocked(week.week, progress.examResults);
             const completedCount = weekLessons.filter((lesson) =>
               progress.completedLessons.includes(lesson.id),
             ).length;
             return (
-              <article key={week.week} className="course-week">
-                <div className="week-number">{String(week.week).padStart(2, "0")}</div>
-                <div>
-                  <span>WEEK {week.week}</span>
-                  <h2>{week.title}</h2>
-                  <p>{week.goal}</p>
-                  {weekLessons.length > 0 && (
+              <Fragment key={week.week}>
+                <article className={`course-week${unlocked ? "" : " locked"}`}>
+                  <div className="week-number">
+                    {unlocked ? String(week.week).padStart(2, "0") : "⌑"}
+                  </div>
+                  <div>
+                    <span>WEEK {week.week}</span>
+                    <h2>{week.title}</h2>
+                    <p>{week.goal}</p>
                     <div className="available-lessons">
-                      {weekLessons.map((lesson) => (
-                        <button type="button" key={lesson.id} onClick={() => onStartLesson(lesson)}>
-                          Day {lesson.day} · {lesson.title}
-                          {progress.completedLessons.includes(lesson.id) && " ✓"}
-                        </button>
-                      ))}
+                      {weekLessons.map((lesson) => {
+                        const complete = progress.completedLessons.includes(lesson.id);
+                        return (
+                          <button
+                            type="button"
+                            key={lesson.id}
+                            disabled={!unlocked}
+                            onClick={() => onStartLesson(lesson)}
+                          >
+                            Day {lesson.day} · {lesson.title}
+                            {complete && " ✓"}
+                          </button>
+                        );
+                      })}
                     </div>
-                  )}
-                </div>
-                <span className={`week-status ${weekLessons.length ? "available" : ""}`}>
-                  {weekLessons.length ? `${completedCount}/${weekLessons.length} adapted` : "Content QA"}
-                </span>
-              </article>
+                  </div>
+                  <span className={`week-status ${unlocked ? "available" : ""}`}>
+                    {unlocked ? `${completedCount}/${weekLessons.length} complete` : "Exam locked"}
+                  </span>
+                </article>
+                {week.week % 4 === 0 && (() => {
+                  const result = progress.examResults?.[week.week];
+                  const ready = isExamReady(week.week, progress);
+                  const special = examSpecialItems.find(
+                    (item) => item.checkpoint === week.week,
+                  );
+                  return (
+                    <article className={`checkpoint-banner${result?.passed ? " passed" : ""}`}>
+                      <div>
+                        <span className="step-label">CHAPTER {week.week / 4} EXAM</span>
+                        <h3>Weeks {week.week - 3}–{week.week} checkpoint</h3>
+                        <p>
+                          Pass at 80% · Exclusive {special.name} at 90% · Wrong answers cost{" "}
+                          {economy.wrongAnswerPenalty} coins
+                        </p>
+                      </div>
+                      <button
+                        type="button"
+                        className={ready || result?.passed ? "primary-button" : "secondary-button"}
+                        disabled={!ready && !result?.passed}
+                        onClick={() => onStartExam(week.week)}
+                      >
+                        {result?.passed
+                          ? `Best ${result.bestScore}% · Retake`
+                          : ready
+                            ? "Take exam →"
+                            : "Complete all 24 lessons"}
+                      </button>
+                    </article>
+                  );
+                })()}
+              </Fragment>
             );
           })}
       </section>
@@ -530,7 +649,182 @@ function CourseScreen({ progress, onStartLesson }) {
   );
 }
 
-function PracticeScreen() {
+function ExamHub({ progress, onStartExam }) {
+  return (
+    <div className="screen-stack">
+      <section className="page-heading">
+        <div>
+          <div className="eyebrow">SIX CHAPTER CHECKPOINTS</div>
+          <h1>Revise. Pass. Unlock.</h1>
+          <p>
+            Every four weeks ends with a ten-question exam. Pass at 80%; reach 90% for an
+            item that the store will never sell.
+          </p>
+        </div>
+        <div className="exam-economy-note">
+          <strong>+{economy.examPassReward}</strong>
+          <span>first-pass reward</span>
+          <small>−{economy.wrongAnswerPenalty} per wrong answer</small>
+        </div>
+      </section>
+
+      <section className="exam-grid">
+        {examCheckpoints.map((checkpoint) => {
+          const result = progress.examResults?.[checkpoint];
+          const ready = isExamReady(checkpoint, progress);
+          const special = examSpecialItems.find((item) => item.checkpoint === checkpoint);
+          return (
+            <article
+              key={checkpoint}
+              className={`exam-card${result?.passed ? " passed" : ready ? " ready" : ""}`}
+            >
+              <div className="exam-card-topline">
+                <span>WEEKS {checkpoint - 3}–{checkpoint}</span>
+                <strong>{result?.passed ? `${result.bestScore}%` : ready ? "READY" : "LOCKED"}</strong>
+              </div>
+              <div className="exam-special-icon" style={{ color: special.color }}>
+                {special.icon}
+              </div>
+              <h2>Checkpoint {checkpoint / 4}</h2>
+              <p>{special.name} · exclusive 90% reward</p>
+              <button
+                type="button"
+                className="secondary-button full-width"
+                disabled={!ready && !result?.passed}
+                onClick={() => onStartExam(checkpoint)}
+              >
+                {result?.passed ? "Retake exam" : ready ? "Start exam →" : "Finish chapter lessons"}
+              </button>
+            </article>
+          );
+        })}
+      </section>
+
+      <section className="practice-divider">
+        <span className="step-label">UNLIMITED PRACTICE · NO COIN PENALTY</span>
+        <h2>Prepare for judge questions</h2>
+      </section>
+      <PracticeScreen embedded />
+    </div>
+  );
+}
+
+function WardrobeScreen({ progress, onPurchase, onEquip }) {
+  const inventory = new Set(progress.inventory);
+  const earnedSpecials = examSpecialItems.filter((item) => inventory.has(item.id));
+
+  return (
+    <div className="screen-stack">
+      <section className="page-heading wardrobe-heading">
+        <div>
+          <div className="eyebrow">PU’S BACK BAR · CHARACTER & STORE</div>
+          <h1>Make progress visible.</h1>
+          <p>Lessons earn coins. Exams unlock exclusive pieces that cannot be purchased.</p>
+        </div>
+        <div className="coin-balance">
+          <span>◉</span>
+          <strong>{progress.points}</strong>
+          <small>BAR COINS</small>
+        </div>
+      </section>
+
+      <section className="wardrobe-layout">
+        <div className="avatar-panel">
+          <BartenderAvatar equipped={progress.equipped} />
+          <div className="equipped-list">
+            {["outfit", "head", "accessory", "background"].map((type) => {
+              const item = allAvatarItems.find(
+                (candidate) => candidate.id === progress.equipped[type],
+              );
+              return (
+                <span key={type}>
+                  <small>{type}</small>
+                  <strong>{item?.name || "Default"}</strong>
+                </span>
+              );
+            })}
+          </div>
+        </div>
+
+        <div className="store-panel">
+          <div className="panel-heading">
+            <div>
+              <span className="step-label">STORE</span>
+              <h2>Shift rewards</h2>
+            </div>
+            <span className="economy-caption">Most items = 7–22 completed lessons</span>
+          </div>
+          <div className="store-grid">
+            {storeItems.map((item) => {
+              const owned = inventory.has(item.id);
+              const equipped = progress.equipped[item.type] === item.id;
+              const affordable = progress.points >= item.price;
+              return (
+                <article key={item.id} className={owned ? "owned" : ""}>
+                  <div className="store-icon" style={{ color: item.color }}>{item.icon}</div>
+                  <span>{item.type.toUpperCase()}</span>
+                  <h3>{item.name}</h3>
+                  <p>{item.description}</p>
+                  {owned ? (
+                    <button
+                      type="button"
+                      className="secondary-button full-width"
+                      disabled={equipped}
+                      onClick={() => onEquip(item)}
+                    >
+                      {equipped ? "✓ Equipped" : "Equip"}
+                    </button>
+                  ) : (
+                    <button
+                      type="button"
+                      className="secondary-button full-width"
+                      disabled={!affordable}
+                      onClick={() => onPurchase(item)}
+                    >
+                      ◉ {item.price}
+                    </button>
+                  )}
+                </article>
+              );
+            })}
+          </div>
+        </div>
+      </section>
+
+      <section className="exclusive-vault">
+        <div className="panel-heading">
+          <div>
+            <span className="step-label">EXAM VAULT</span>
+            <h2>Six pieces money cannot buy</h2>
+          </div>
+          <span>{earnedSpecials.length}/6 earned</span>
+        </div>
+        <div className="special-grid">
+          {examSpecialItems.map((item) => {
+            const owned = inventory.has(item.id);
+            const equipped = progress.equipped[item.type] === item.id;
+            return (
+              <article key={item.id} className={owned ? "earned" : "locked"}>
+                <span style={{ color: owned ? item.color : undefined }}>{owned ? item.icon : "?"}</span>
+                <div>
+                  <small>WEEK {item.checkpoint} · 90%</small>
+                  <strong>{owned ? item.name : "Hidden reward"}</strong>
+                </div>
+                {owned && (
+                  <button type="button" onClick={() => onEquip(item)} disabled={equipped}>
+                    {equipped ? "Equipped" : "Equip"}
+                  </button>
+                )}
+              </article>
+            );
+          })}
+        </div>
+      </section>
+    </div>
+  );
+}
+
+function PracticeScreen({ embedded = false }) {
   const [questionIndex, setQuestionIndex] = useState(0);
   const [timerMode, setTimerMode] = useState("idle");
   const [remaining, setRemaining] = useState(30);
@@ -558,11 +852,13 @@ function PracticeScreen() {
 
   return (
     <div className="screen-stack">
-      <section className="page-heading">
-        <div className="eyebrow">PRACTICE LAB · JUDGE MODE</div>
-        <h1>Answer under pressure.</h1>
-        <p>Thirty seconds to prepare. Ninety seconds to answer. Keep it direct.</p>
-      </section>
+      {!embedded && (
+        <section className="page-heading">
+          <div className="eyebrow">PRACTICE LAB · JUDGE MODE</div>
+          <h1>Answer under pressure.</h1>
+          <p>Thirty seconds to prepare. Ninety seconds to answer. Keep it direct.</p>
+        </section>
+      )}
       <section className="judge-layout">
         <article className="judge-card">
           <div className="judge-topline">
@@ -580,7 +876,7 @@ function PracticeScreen() {
           </div>
           <TranslatableText
             text={judgeQuestions[questionIndex]}
-            sentenceTranslation="Giữ từng từ trong 5 giây để xem nghĩa."
+            sentenceTranslation="Giữ từng từ trong 2 giây để xem nghĩa."
             className="judge-question"
           />
           <div className={`timer ${timerMode}`}>
@@ -624,12 +920,18 @@ function PracticeScreen() {
 function ProgressScreen({ profile, progress }) {
   const streak = calculateStreak(progress.completionDates, profile.recoveryDay);
   const lessonPercent = Math.round((progress.completedLessons.length / starterLessons.length) * 100);
+  const completedSet = new Set(progress.completedLessons);
+  const completedInRange = (startWeek, endWeek) =>
+    starterLessons.filter(
+      (lesson) =>
+        lesson.week >= startWeek && lesson.week <= endWeek && completedSet.has(lesson.id),
+    ).length;
   const milestones = [
     ["First Pour", "Complete your first lesson", progress.completedLessons.length >= 1],
     ["Clear Voice", "Save ten speaking recordings", progress.recordings >= 10],
-    ["Smooth Service", "Complete four service lessons", progress.completedLessons.filter((id) => id < 17).length >= 4],
-    ["Storyteller", "Complete a competition story lesson", progress.completedLessons.includes(97)],
-    ["Judge Ready", "Complete a judge-question lesson", progress.completedLessons.includes(127)],
+    ["First Chapter", "Pass the Week 4 exam", progress.examResults?.[4]?.passed],
+    ["Special Collector", "Earn an exclusive exam item", examSpecialItems.some((item) => progress.inventory.includes(item.id))],
+    ["Master Bartender", "Pass the final Week 24 exam", progress.examResults?.[24]?.passed],
   ];
 
   return (
@@ -646,9 +948,9 @@ function ProgressScreen({ profile, progress }) {
           <small>One completed speaking task per study day.</small>
         </article>
         <article className="stat-card">
-          <span>Adapted lessons</span>
+          <span>Course lessons</span>
           <strong>{progress.completedLessons.length}/{starterLessons.length}</strong>
-          <small>{lessonPercent}% of the validated starter set.</small>
+          <small>{lessonPercent}% of the full 24-week course.</small>
         </article>
         <article className="stat-card">
           <span>Voice archive</span>
@@ -661,9 +963,9 @@ function ProgressScreen({ profile, progress }) {
           <span className="step-label">SKILL SIGNALS</span>
           <div className="skill-bars">
             {[
-              ["Service English", Math.min(100, progress.completedLessons.filter((id) => id < 17).length * 25)],
-              ["Speaking practice", Math.min(100, progress.recordings * 10)],
-              ["Competition", Math.min(100, progress.completedLessons.filter((id) => id >= 97).length * 50)],
+              ["Bar foundations", Math.round((completedInRange(1, 8) / 48) * 100)],
+              ["Real-shift service", Math.round((completedInRange(9, 16) / 48) * 100)],
+              ["Competition", Math.round((completedInRange(17, 24) / 48) * 100)],
             ].map(([name, score]) => (
               <div key={name}>
                 <span>{name}</span>
@@ -707,7 +1009,7 @@ function ProfileScreen({ profile, onReset }) {
           <dl>
             <div><dt>Study time</dt><dd>{profile.studyTime}</dd></div>
             <div><dt>Recovery day</dt><dd>{days[profile.recoveryDay]}</dd></div>
-            <div><dt>Translation hold</dt><dd>5 seconds</dd></div>
+            <div><dt>Translation hold</dt><dd>2 seconds</dd></div>
             <div><dt>Audio and video</dt><dd>Saved locally</dd></div>
           </dl>
         </article>
@@ -741,6 +1043,7 @@ export default function App() {
   });
   const [screen, setScreen] = useState("home");
   const [activeLesson, setActiveLesson] = useState(null);
+  const [activeExam, setActiveExam] = useState(null);
 
   function completeProfile(nextProfile) {
     saveProfile(nextProfile);
@@ -765,7 +1068,8 @@ export default function App() {
         completionDates: current.completionDates.includes(today)
           ? current.completionDates
           : [...current.completionDates, today],
-        points: current.points + 40,
+        recordings: current.recordings + 1,
+        points: current.points + economy.lessonReward,
       };
     });
   }
@@ -774,8 +1078,57 @@ export default function App() {
     updateProgress((current) => ({
       ...current,
       recordings: current.recordings + 1,
-      points: current.points + 10,
     }));
+  }
+
+  function purchaseItem(item) {
+    updateProgress((current) => {
+      if (current.inventory.includes(item.id) || current.points < item.price) return current;
+      return {
+        ...current,
+        points: current.points - item.price,
+        inventory: [...current.inventory, item.id],
+        equipped: { ...current.equipped, [item.type]: item.id },
+      };
+    });
+  }
+
+  function equipItem(item) {
+    updateProgress((current) => {
+      if (!current.inventory.includes(item.id)) return current;
+      return {
+        ...current,
+        equipped: { ...current.equipped, [item.type]: item.id },
+      };
+    });
+  }
+
+  function completeExam(outcome) {
+    updateProgress((current) => {
+      const previous = current.examResults?.[outcome.checkpoint] || {};
+      const special = examSpecialItems.find(
+        (item) => item.checkpoint === outcome.checkpoint,
+      );
+      const earnsNewSpecial =
+        outcome.specialEarned && special && !current.inventory.includes(special.id);
+      return {
+        ...current,
+        points: Math.max(0, current.points + outcome.reward - outcome.penalty),
+        inventory: earnsNewSpecial
+          ? [...current.inventory, special.id]
+          : current.inventory,
+        examResults: {
+          ...current.examResults,
+          [outcome.checkpoint]: {
+            attempts: (previous.attempts || 0) + 1,
+            bestScore: Math.max(previous.bestScore || 0, outcome.score),
+            passed: Boolean(previous.passed || outcome.passed),
+            rewardClaimed: Boolean(previous.rewardClaimed || outcome.reward),
+            specialEarned: Boolean(previous.specialEarned || outcome.specialEarned),
+          },
+        },
+      };
+    });
   }
 
   function reset() {
@@ -784,9 +1137,21 @@ export default function App() {
     setProfile(null);
     setScreen("home");
     setActiveLesson(null);
+    setActiveExam(null);
   }
 
   if (!profile) return <Onboarding onComplete={completeProfile} />;
+
+  if (activeExam) {
+    return (
+      <ExamPlayer
+        checkpoint={activeExam}
+        progress={progress}
+        onExit={() => setActiveExam(null)}
+        onFinish={completeExam}
+      />
+    );
+  }
 
   if (activeLesson) {
     return (
@@ -809,13 +1174,27 @@ export default function App() {
             profile={profile}
             progress={progress}
             onStartLesson={setActiveLesson}
+            onStartExam={setActiveExam}
             onNavigate={setScreen}
           />
         )}
         {screen === "course" && (
-          <CourseScreen progress={progress} onStartLesson={setActiveLesson} />
+          <CourseScreen
+            progress={progress}
+            onStartLesson={setActiveLesson}
+            onStartExam={setActiveExam}
+          />
         )}
-        {screen === "practice" && <PracticeScreen />}
+        {screen === "exams" && (
+          <ExamHub progress={progress} onStartExam={setActiveExam} />
+        )}
+        {screen === "wardrobe" && (
+          <WardrobeScreen
+            progress={progress}
+            onPurchase={purchaseItem}
+            onEquip={equipItem}
+          />
+        )}
         {screen === "progress" && <ProgressScreen profile={profile} progress={progress} />}
         {screen === "profile" && <ProfileScreen profile={profile} onReset={reset} />}
       </main>
