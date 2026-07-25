@@ -2,6 +2,7 @@ import { Fragment, useEffect, useMemo, useState } from "react";
 import AudioRecorder from "./components/AudioRecorder.jsx";
 import BartenderAvatar from "./components/BartenderAvatar.jsx";
 import ExamPlayer from "./components/ExamPlayer.jsx";
+import SentenceBuilder from "./components/SentenceBuilder.jsx";
 import ShiftSubmission from "./components/ShiftSubmission.jsx";
 import TranslatableText from "./components/TranslatableText.jsx";
 import VideoRecorder from "./components/VideoRecorder.jsx";
@@ -310,12 +311,13 @@ function HomeScreen({ profile, progress, onStartLesson, onStartExam, onNavigate 
 }
 
 function LessonPlayer({ lesson, progress, onExit, onComplete, onRecording }) {
+  const isCompleted = progress.completedLessons.includes(lesson.id);
   const [step, setStep] = useState(0);
   const [showVietnamese, setShowVietnamese] = useState(true);
+  const [buildComplete, setBuildComplete] = useState(isCompleted);
   const [shiftEvidenceReady, setShiftEvidenceReady] = useState(false);
   const [showCelebration, setShowCelebration] = useState(false);
   const steps = ["Hear it", "Words", "Build it", "Dialogue", "Speak", "Shift mission"];
-  const isCompleted = progress.completedLessons.includes(lesson.id);
 
   function next() {
     setStep((current) => Math.min(current + 1, steps.length - 1));
@@ -354,6 +356,8 @@ function LessonPlayer({ lesson, progress, onExit, onComplete, onRecording }) {
             key={name}
             className={index <= step ? "active" : ""}
             onClick={() => setStep(index)}
+            disabled={!buildComplete && index > 2}
+            title={!buildComplete && index > 2 ? "Complete Build it first" : ""}
           >
             <span>{index + 1}</span>
             <small>{name}</small>
@@ -422,20 +426,13 @@ function LessonPlayer({ lesson, progress, onExit, onComplete, onRecording }) {
 
         {step === 2 && (
           <section className="learning-card build-card">
-            <div className="card-kicker">03 · BUILD ONE USEFUL SENTENCE</div>
-            <p>{lesson.pattern.prompt}</p>
-            <div className="pattern-builder">
-              <TranslatableText text={lesson.pattern.template} />
-            </div>
-            <div className="pattern-examples">
-              {lesson.pattern.examples.map((example) => (
-                <button type="button" key={example} onClick={() => speak(example)}>
-                  <TranslatableText text={example} />
-                  <span>▶</span>
-                </button>
-              ))}
-            </div>
-            <p className="muted">Say it three times: slowly, naturally, then without looking.</p>
+            <div className="card-kicker">03 · BUILD THREE USEFUL SENTENCES</div>
+            <SentenceBuilder
+              phrases={lesson.warmup.slice(0, 3)}
+              onComplete={() => setBuildComplete(true)}
+              onSpeak={speak}
+              showVietnamese={showVietnamese}
+            />
           </section>
         )}
 
@@ -512,7 +509,12 @@ function LessonPlayer({ lesson, progress, onExit, onComplete, onRecording }) {
             ← Previous
           </button>
           {step < steps.length - 1 && (
-            <button type="button" className="primary-button" onClick={next}>
+            <button
+              type="button"
+              className="primary-button"
+              onClick={next}
+              disabled={step === 2 && !buildComplete}
+            >
               Continue →
             </button>
           )}
