@@ -24,7 +24,7 @@ is reviewed and adapted before it enters the course.
 ## Run locally
 
 ```bash
-(https://skylartrangla.github.io/EnglishBehindTheBar/)
+https://skylartrangla.github.io/EnglishBehindTheBar/
 ```
 
 ## Build
