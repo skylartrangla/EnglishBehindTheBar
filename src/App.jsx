@@ -2,6 +2,7 @@ import { Fragment, useEffect, useMemo, useState } from "react";
 import AudioRecorder from "./components/AudioRecorder.jsx";
 import BartenderAvatar from "./components/BartenderAvatar.jsx";
 import ExamPlayer from "./components/ExamPlayer.jsx";
+import RecoveryGame from "./components/RecoveryGame.jsx";
 import SentenceBuilder from "./components/SentenceBuilder.jsx";
 import ShiftSubmission from "./components/ShiftSubmission.jsx";
 import TranslatableText from "./components/TranslatableText.jsx";
@@ -22,11 +23,13 @@ import {
   storeItems,
 } from "./data/game.js";
 import {
-  calculateStreak,
+  calculateHabitStreak,
   clearProfile,
+  evaluateStudyCheckIn,
   loadProfile,
   loadProgress,
   localDateKey,
+  localWeekKey,
   saveProfile,
   saveProgress,
 } from "./lib/storage.js";
@@ -35,6 +38,7 @@ const screens = [
   ["home", "⌂", "Today"],
   ["course", "◫", "Course"],
   ["exams", "◎", "Exams"],
+  ["game", "↻", "Minigame"],
   ["wardrobe", "♢", "Pu"],
   ["progress", "◇", "Progress"],
 ];
@@ -138,7 +142,7 @@ function Onboarding({ onComplete }) {
 }
 
 function AppHeader({ profile, progress, onOpenProfile }) {
-  const streak = calculateStreak(progress.completionDates, profile.recoveryDay);
+  const streak = calculateHabitStreak(progress.habitCheckIns, profile.recoveryDay);
 
   return (
     <header className="app-header">
@@ -167,7 +171,21 @@ function HomeScreen({ profile, progress, onStartLesson, onStartExam, onNavigate 
     (checkpoint) =>
       !progress.examResults?.[checkpoint]?.passed && isExamReady(checkpoint, progress),
   );
-  const streak = calculateStreak(progress.completionDates, profile.recoveryDay);
+  const streak = calculateHabitStreak(progress.habitCheckIns, profile.recoveryDay);
+  const todayCheckIn = progress.habitCheckIns.find(
+    (entry) => entry.date === localDateKey(),
+  );
+  const checkInMessage = !todayCheckIn
+    ? "Checking today’s study time…"
+    : todayCheckIn.status === "on-time"
+      ? `✓ On time for ${profile.studyTime}`
+      : todayCheckIn.status === "recovery-day"
+        ? "☕ Scheduled recovery day"
+        : todayCheckIn.status === "recovered"
+          ? "↻ Streak recovered"
+          : todayCheckIn.status === "debt"
+            ? "⚠ Streak debt created"
+            : `⚠ Outside study time · mark ${todayCheckIn.markNumber}/3`;
 
   return (
     <div className="screen-stack">
@@ -180,7 +198,9 @@ function HomeScreen({ profile, progress, onStartLesson, onStartExam, onNavigate 
         <div className="home-character">
           <BartenderAvatar equipped={progress.equipped} compact />
           <div>
-            <span className="check-in-chip">✓ Daily check-in saved</span>
+            <span className={`check-in-chip ${todayCheckIn && todayCheckIn.status !== "on-time" && todayCheckIn.status !== "recovery-day" ? "warning" : ""}`}>
+              {checkInMessage}
+            </span>
             <strong>{progress.points} Bar Coins</strong>
             <button type="button" className="text-button" onClick={() => onNavigate("wardrobe")}>
               Dress Pu →
@@ -191,9 +211,9 @@ function HomeScreen({ profile, progress, onStartLesson, onStartExam, onNavigate 
 
       <section className="stat-grid">
         <article className="stat-card">
-          <span>Shaker streak</span>
+          <span>On-time streak</span>
           <strong>{streak} days</strong>
-          <small>Recovery days do not break it.</small>
+          <small>Check in near {profile.studyTime} each study day.</small>
         </article>
         <article className="stat-card">
           <span>Bar Coins</span>
@@ -201,11 +221,31 @@ function HomeScreen({ profile, progress, onStartLesson, onStartExam, onNavigate 
           <small>Earned through lessons and exams.</small>
         </article>
         <article className="stat-card">
-          <span>Recordings</span>
-          <strong>{progress.recordings}</strong>
-          <small>Saved on this device.</small>
+          <span>Recovery Tokens</span>
+          <strong>{progress.recoveryTokens}</strong>
+          <small>{progress.streakDebt ? `${progress.streakDebt} streak debt waiting.` : "No streak debt."}</small>
         </article>
       </section>
+
+      {(progress.lateMarks > 0 || progress.streakDebt > 0) && (
+        <section className="habit-warning-card">
+          <div>
+            <span className="step-label">STUDY-TIME HABIT</span>
+            <h2>
+              {progress.streakDebt
+                ? "Your streak needs a Recovery Token."
+                : `${progress.lateMarks}/3 outside-time marks used.`}
+            </h2>
+            <p>
+              Your check-in window is {profile.studyTime}, plus or minus 30 minutes.
+              Late marks never remove Bar Coins.
+            </p>
+          </div>
+          <button type="button" className="secondary-button" onClick={() => onNavigate("game")}>
+            Open Minigame →
+          </button>
+        </section>
+      )}
 
       {currentLesson ? (
         <section className="mission-card">
@@ -920,7 +960,7 @@ function PracticeScreen({ embedded = false }) {
 }
 
 function ProgressScreen({ profile, progress }) {
-  const streak = calculateStreak(progress.completionDates, profile.recoveryDay);
+  const streak = calculateHabitStreak(progress.habitCheckIns, profile.recoveryDay);
   const lessonPercent = Math.round((progress.completedLessons.length / starterLessons.length) * 100);
   const completedSet = new Set(progress.completedLessons);
   const completedInRange = (startWeek, endWeek) =>
@@ -941,13 +981,13 @@ function ProgressScreen({ profile, progress }) {
       <section className="page-heading">
         <div className="eyebrow">YOUR LEARNING RECORD</div>
         <h1>Consistency over perfection.</h1>
-        <p>Only meaningful speaking work counts toward your streak.</p>
+        <p>Your streak now reflects showing up near your chosen study time.</p>
       </section>
       <section className="stat-grid">
         <article className="stat-card featured">
-          <span>Current streak</span>
+          <span>On-time streak</span>
           <strong>{streak} days</strong>
-          <small>One completed speaking task per study day.</small>
+          <small>Daily window: ±30 minutes around {profile.studyTime}.</small>
         </article>
         <article className="stat-card">
           <span>Course lessons</span>
@@ -961,6 +1001,31 @@ function ProgressScreen({ profile, progress }) {
         </article>
       </section>
       <section className="two-column">
+        <article className="panel-card">
+          <span className="step-label">RECENT CHECK-INS</span>
+          <div className="check-in-history">
+            {progress.habitCheckIns.length ? (
+              [...progress.habitCheckIns].slice(-7).reverse().map((entry) => (
+                <div key={entry.date}>
+                  <span>{entry.date}</span>
+                  <strong>
+                    {entry.status === "on-time"
+                      ? "✓ On time"
+                      : entry.status === "recovery-day"
+                        ? "☕ Recovery day"
+                        : entry.status === "recovered"
+                          ? "↻ Recovered"
+                          : entry.status === "debt"
+                            ? "⚠ Debt"
+                            : `⚠ Mark ${entry.markNumber}/3`}
+                  </strong>
+                </div>
+              ))
+            ) : (
+              <p>Your first timed check-in will appear here.</p>
+            )}
+          </div>
+        </article>
         <article className="panel-card">
           <span className="step-label">SKILL SIGNALS</span>
           <div className="skill-bars">
@@ -1031,17 +1096,42 @@ function ProfileScreen({ profile, onReset }) {
   );
 }
 
+function registerDailyHabitCheckIn(current, profile, now = new Date()) {
+  if (!profile) return current;
+  const today = localDateKey(now);
+  if (current.habitCheckIns.some((entry) => entry.date === today)) return current;
+
+  const checkIn = evaluateStudyCheckIn(
+    profile.studyTime,
+    profile.recoveryDay,
+    now,
+  );
+  const outsideWindow = checkIn.status === "outside-window";
+  const nextMark = outsideWindow ? current.lateMarks + 1 : current.lateMarks;
+  const createsDebt = outsideWindow && nextMark >= 3;
+  const entry = {
+    ...checkIn,
+    status: createsDebt ? "debt" : checkIn.status,
+    markNumber: outsideWindow ? (createsDebt ? 3 : nextMark) : 0,
+  };
+
+  return {
+    ...current,
+    checkIns: current.checkIns.includes(today)
+      ? current.checkIns
+      : [...current.checkIns, today],
+    habitCheckIns: [...current.habitCheckIns, entry],
+    lateMarks: createsDebt ? 0 : nextMark,
+    streakDebt: current.streakDebt + Number(createsDebt),
+  };
+}
+
 export default function App() {
   const [profile, setProfile] = useState(() => loadProfile());
   const [progress, setProgress] = useState(() => {
-    const current = loadProgress();
-    const today = localDateKey();
-    if (!current.checkIns.includes(today)) {
-      const updated = { ...current, checkIns: [...current.checkIns, today] };
-      saveProgress(updated);
-      return updated;
-    }
-    return current;
+    const next = registerDailyHabitCheckIn(loadProgress(), profile);
+    saveProgress(next);
+    return next;
   });
   const [screen, setScreen] = useState("home");
   const [activeLesson, setActiveLesson] = useState(null);
@@ -1049,6 +1139,11 @@ export default function App() {
 
   function completeProfile(nextProfile) {
     saveProfile(nextProfile);
+    setProgress((current) => {
+      const next = registerDailyHabitCheckIn(current, nextProfile);
+      saveProgress(next);
+      return next;
+    });
     setProfile(nextProfile);
   }
 
@@ -1101,6 +1196,51 @@ export default function App() {
       return {
         ...current,
         equipped: { ...current.equipped, [item.type]: item.id },
+      };
+    });
+  }
+
+  function buyRecoveryToken(price) {
+    updateProgress((current) => {
+      if (current.points < price || current.recoveryTokens >= 5) return current;
+      return {
+        ...current,
+        points: current.points - price,
+        recoveryTokens: current.recoveryTokens + 1,
+      };
+    });
+  }
+
+  function winRecoveryToken() {
+    updateProgress((current) => {
+      const week = localWeekKey();
+      if (
+        current.minigameRewardWeeks.includes(week) ||
+        current.recoveryTokens >= 5
+      ) {
+        return current;
+      }
+      return {
+        ...current,
+        recoveryTokens: current.recoveryTokens + 1,
+        minigameRewardWeeks: [...current.minigameRewardWeeks, week],
+      };
+    });
+  }
+
+  function useRecoveryToken() {
+    updateProgress((current) => {
+      if (!current.recoveryTokens || !current.streakDebt) return current;
+      const debtIndex = current.habitCheckIns.findIndex(
+        (entry) => entry.status === "debt",
+      );
+      return {
+        ...current,
+        recoveryTokens: current.recoveryTokens - 1,
+        streakDebt: current.streakDebt - 1,
+        habitCheckIns: current.habitCheckIns.map((entry, index) =>
+          index === debtIndex ? { ...entry, status: "recovered" } : entry,
+        ),
       };
     });
   }
@@ -1189,6 +1329,14 @@ export default function App() {
         )}
         {screen === "exams" && (
           <ExamHub progress={progress} onStartExam={setActiveExam} />
+        )}
+        {screen === "game" && (
+          <RecoveryGame
+            progress={progress}
+            onBuyToken={buyRecoveryToken}
+            onUseToken={useRecoveryToken}
+            onWinToken={winRecoveryToken}
+          />
         )}
         {screen === "wardrobe" && (
           <WardrobeScreen

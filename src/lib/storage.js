@@ -27,6 +27,11 @@ export function loadProgress() {
     points: 0,
     recordings: 0,
     checkIns: [],
+    habitCheckIns: [],
+    lateMarks: 0,
+    streakDebt: 0,
+    recoveryTokens: 0,
+    minigameRewardWeeks: [],
     inventory: ["classic-apron"],
     equipped: {
       outfit: "classic-apron",
@@ -60,6 +65,65 @@ export function localDateKey(date = new Date()) {
   const month = String(date.getMonth() + 1).padStart(2, "0");
   const day = String(date.getDate()).padStart(2, "0");
   return `${year}-${month}-${day}`;
+}
+
+export function localWeekKey(date = new Date()) {
+  const cursor = new Date(date.getFullYear(), date.getMonth(), date.getDate());
+  const day = cursor.getDay() || 7;
+  cursor.setDate(cursor.getDate() + 4 - day);
+  const yearStart = new Date(cursor.getFullYear(), 0, 1);
+  const week = Math.ceil(((cursor - yearStart) / 86400000 + 1) / 7);
+  return `${cursor.getFullYear()}-W${String(week).padStart(2, "0")}`;
+}
+
+export function evaluateStudyCheckIn(studyTime, recoveryDay = 0, now = new Date()) {
+  const [hours, minutes] = String(studyTime || "19:00").split(":").map(Number);
+  const target = new Date(
+    now.getFullYear(),
+    now.getMonth(),
+    now.getDate(),
+    hours || 0,
+    minutes || 0,
+  );
+  const minutesFromTarget = Math.round((now - target) / 60000);
+  const isRecoveryDay = now.getDay() === Number(recoveryDay);
+
+  return {
+    date: localDateKey(now),
+    checkedAt: now.toISOString(),
+    minutesFromTarget,
+    status: isRecoveryDay
+      ? "recovery-day"
+      : Math.abs(minutesFromTarget) <= 30
+        ? "on-time"
+        : "outside-window",
+  };
+}
+
+export function calculateHabitStreak(habitCheckIns, recoveryDay = 0, now = new Date()) {
+  const protectedDates = new Set(
+    habitCheckIns
+      .filter((entry) => entry.status !== "debt")
+      .map((entry) => entry.date),
+  );
+  let cursor = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+  let streak = 0;
+
+  if (!protectedDates.has(localDateKey(cursor)) && cursor.getDay() !== Number(recoveryDay)) {
+    cursor.setDate(cursor.getDate() - 1);
+  }
+
+  for (let checked = 0; checked < 370; checked += 1) {
+    if (cursor.getDay() === Number(recoveryDay)) {
+      cursor.setDate(cursor.getDate() - 1);
+      continue;
+    }
+    if (!protectedDates.has(localDateKey(cursor))) break;
+    streak += 1;
+    cursor.setDate(cursor.getDate() - 1);
+  }
+
+  return streak;
 }
 
 export function calculateStreak(completionDates, recoveryDay = 0, now = new Date()) {

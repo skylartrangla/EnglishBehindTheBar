@@ -375,6 +375,12 @@ p {
   white-space: nowrap;
 }
 
+.check-in-chip.warning {
+  border-color: rgba(255, 123, 134, 0.35);
+  color: #ffb0b7;
+  background: rgba(255, 81, 99, 0.08);
+}
+
 .home-character {
   display: flex;
   align-items: center;
@@ -589,6 +595,208 @@ p {
 .week-dots span.active {
   color: #021b24;
   background: var(--ocean-400);
+}
+
+.habit-warning-card,
+.recovery-alert {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 24px;
+  padding: 24px;
+  border: 1px solid rgba(255, 123, 134, 0.3);
+  border-radius: 12px;
+  background: linear-gradient(120deg, rgba(255, 81, 99, 0.08), rgba(4, 55, 70, 0.45));
+}
+
+.habit-warning-card h2,
+.recovery-alert h2 {
+  margin: 7px 0;
+}
+
+.habit-warning-card p,
+.recovery-alert p {
+  margin: 0;
+}
+
+.habit-status-grid {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 14px;
+}
+
+.habit-status-grid article {
+  display: grid;
+  gap: 6px;
+  min-height: 138px;
+  padding: 22px;
+  border: 1px solid var(--line);
+  border-radius: 12px;
+  background: rgba(4, 55, 70, 0.42);
+}
+
+.habit-status-grid article.warning {
+  border-color: rgba(255, 123, 134, 0.42);
+  background: rgba(255, 81, 99, 0.07);
+}
+
+.habit-status-grid span,
+.habit-status-grid small {
+  color: var(--ink-muted);
+}
+
+.habit-status-grid strong {
+  font-size: 2rem;
+}
+
+.recovery-layout {
+  display: grid;
+  grid-template-columns: minmax(0, 1.6fr) minmax(250px, 0.7fr);
+  gap: 18px;
+  align-items: start;
+}
+
+.minigame-card,
+.recovery-shop {
+  padding: 26px;
+}
+
+.weekly-reward {
+  padding: 7px 10px;
+  border: 1px solid rgba(129, 230, 192, 0.25);
+  border-radius: 999px;
+  color: var(--sea-glass);
+  font-family: "Space Mono", monospace;
+  font-size: 0.66rem;
+  text-transform: uppercase;
+}
+
+.minigame-questions {
+  display: grid;
+  gap: 16px;
+  margin: 26px 0;
+}
+
+.minigame-questions fieldset {
+  display: grid;
+  gap: 9px;
+  padding: 18px;
+  border: 1px solid var(--line);
+  border-radius: 12px;
+}
+
+.minigame-questions legend {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 0 8px;
+  color: var(--foam);
+  font-weight: 700;
+}
+
+.minigame-questions legend span {
+  display: grid;
+  width: 27px;
+  height: 27px;
+  place-items: center;
+  border-radius: 50%;
+  color: #021b24;
+  background: var(--ocean-400);
+  font-family: "Space Mono", monospace;
+  font-size: 0.7rem;
+}
+
+.minigame-questions label {
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
+  padding: 12px;
+  border: 1px solid transparent;
+  border-radius: 9px;
+  color: var(--ink-muted);
+  background: rgba(3, 25, 35, 0.42);
+  cursor: pointer;
+}
+
+.minigame-questions label.selected {
+  border-color: var(--ocean-400);
+  color: var(--foam);
+  background: rgba(89, 221, 234, 0.08);
+}
+
+.minigame-questions input {
+  margin-top: 3px;
+  accent-color: var(--ocean-400);
+}
+
+.game-result {
+  margin-bottom: 18px;
+  padding: 18px;
+  border-radius: 10px;
+}
+
+.game-result p {
+  margin: 5px 0 0;
+}
+
+.game-result.passed {
+  color: #aef0d1;
+  background: rgba(54, 178, 120, 0.12);
+}
+
+.game-result.failed {
+  color: #ffb0b7;
+  background: rgba(255, 81, 99, 0.1);
+}
+
+.recovery-shop {
+  position: sticky;
+  top: 90px;
+  display: grid;
+  gap: 14px;
+}
+
+.recovery-token-icon {
+  display: grid;
+  width: 86px;
+  height: 86px;
+  place-items: center;
+  margin: 12px 0;
+  border: 2px solid var(--ocean-400);
+  border-radius: 50%;
+  color: var(--ocean-300);
+  background: radial-gradient(circle, rgba(89, 221, 234, 0.15), transparent 70%);
+  font-size: 2.6rem;
+}
+
+.recovery-shop h2,
+.recovery-shop p {
+  margin: 0;
+}
+
+.recovery-shop > strong {
+  color: var(--ocean-300);
+  font-family: "Space Mono", monospace;
+}
+
+.check-in-history {
+  display: grid;
+  gap: 9px;
+  margin-top: 18px;
+}
+
+.check-in-history > div {
+  display: flex;
+  justify-content: space-between;
+  gap: 14px;
+  padding: 11px 0;
+  border-bottom: 1px solid var(--line);
+}
+
+.check-in-history > div > span {
+  color: var(--ink-muted);
+  font-family: "Space Mono", monospace;
+  font-size: 0.72rem;
 }
 
 .week-dots span.recovery {
@@ -2305,6 +2513,21 @@ p {
   .profile-grid,
   .wardrobe-layout {
     grid-template-columns: 1fr;
+  }
+
+  .habit-status-grid,
+  .recovery-layout {
+    grid-template-columns: 1fr;
+  }
+
+  .habit-warning-card,
+  .recovery-alert {
+    align-items: stretch;
+    flex-direction: column;
+  }
+
+  .recovery-shop {
+    position: static;
   }
 
   .onboarding-copy {
