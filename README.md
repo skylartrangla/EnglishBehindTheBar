@@ -24,8 +24,7 @@ is reviewed and adapted before it enters the course.
 ## Run locally
 
 ```bash
-npm install
-npm run dev
+(https://skylartrangla.github.io/EnglishBehindTheBar/)
 ```
 
 ## Build
